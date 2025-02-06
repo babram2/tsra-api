@@ -20,7 +20,10 @@ bcrypt = Bcrypt(app)
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
 socketio = SocketIO(app, cors_allowed_origins="*")
-
+@app.route("/")
+def home():
+    return "Hello, API is working!"
+    
 # Clé API Stripe (à remplacer par ta clé réelle)
 stripe.api_key = "sk_test_votre_cle_secrete"
 
