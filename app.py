@@ -2,12 +2,12 @@ from flask import Flask, request, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO, emit
 from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_cors import CORS
 import stripe
-import datetime
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
+import datetime
 
 # Configuration Flask
 app = Flask(__name__)
@@ -16,22 +16,23 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'supersecret'
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
-CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 login_manager = LoginManager(app)
 login_manager.login_view = "login"
-socketio = SocketIO(app, cors_allowed_origins="*")
+CORS(app)
 
-# Clé API Stripe (remplacez par votre clé réelle)
-stripe.api_key = "sk_test_votre_cle_secrete"
+# Stripe API Key
+stripe.api_key = "sk_test_your_secret_key"
 
-# Géolocalisation
-geolocator = Nominatim(user_agent="tsra-secours")
+# Geolocator
+geolocator = Nominatim(user_agent="tsra")
 
-# =========================
-# Modèles de base de données
-# =========================
+# Modèles
+class Benevole(UserMixin, db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(150), unique=True, nullable=False)
+    password = db.Column(db.String(150), nullable=False)
 
-# Modèle pour les urgences
 class Urgence(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(100), nullable=False)
@@ -42,7 +43,6 @@ class Urgence(db.Model):
     description = db.Column(db.Text, nullable=False)
     statut = db.Column(db.String(50), default="En attente")
 
-# Modèle pour les cagnottes
 class Cagnotte(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nom = db.Column(db.String(100), nullable=False)
@@ -51,7 +51,6 @@ class Cagnotte(db.Model):
     collecte = db.Column(db.Float, default=0.0)
     date_creation = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-# Modèle pour les contributions
 class Contribution(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cagnotte_id = db.Column(db.Integer, db.ForeignKey('cagnotte.id'), nullable=False)
@@ -59,58 +58,50 @@ class Contribution(db.Model):
     montant = db.Column(db.Float, nullable=False)
     date_don = db.Column(db.DateTime, default=datetime.datetime.utcnow)
 
-# Modèle pour les bénévoles
-class Benevole(UserMixin, db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(150), unique=True, nullable=False)
-    password = db.Column(db.String(150), nullable=False)
-
+# Gestion des bénévoles
 @login_manager.user_loader
 def load_user(user_id):
     return Benevole.query.get(int(user_id))
 
-# =========================
-# Routes
-# =========================
+@app.route('/register', methods=['POST'])
+def register():
+    data = request.json
+    hashed_password = bcrypt.generate_password_hash(data['password']).decode('utf-8')
+    if Benevole.query.filter_by(username=data['username']).first():
+        return jsonify({"error": "Utilisateur déjà existant"}), 400
+    new_user = Benevole(username=data['username'], password=hashed_password)
+    db.session.add(new_user)
+    db.session.commit()
+    return jsonify({"message": "Utilisateur enregistré"}), 201
 
-@app.route("/")
-def home():
-    return "API T.S.R.A. is working!"
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.json
+    user = Benevole.query.filter_by(username=data['username']).first()
+    if user and bcrypt.check_password_hash(user.password, data['password']):
+        login_user(user)
+        return jsonify({"message": "Connexion réussie"}), 200
+    return jsonify({"error": "Identifiants incorrects"}), 401
 
-# Routes pour les urgences
+# Gestion des urgences
 @app.route('/urgence', methods=['POST'])
 def signaler_urgence():
-    try:
-        data = request.json
-        if not data:
-            return jsonify({"error": "Données JSON manquantes"}), 400
+    data = request.json
+    location = geolocator.geocode(data['lieu'])
+    if not location:
+        return jsonify({"error": "Adresse invalide"}), 400
 
-        # Vérification des champs nécessaires
-        for champ in ['nom', 'lieu', 'animal', 'description']:
-            if champ not in data:
-                return jsonify({"error": f"Le champ '{champ}' est requis"}), 400
-
-        # Géolocalisation
-        location = geolocator.geocode(data['lieu'])
-        if not location:
-            return jsonify({"error": "Impossible de géolocaliser l'adresse"}), 400
-
-        # Création de l'urgence
-        nouvelle_urgence = Urgence(
-            nom=data['nom'],
-            lieu=data['lieu'],
-            latitude=location.latitude,
-            longitude=location.longitude,
-            animal=data['animal'],
-            description=data['description']
-        )
-        db.session.add(nouvelle_urgence)
-        db.session.commit()
-
-        return jsonify({"message": "Urgence enregistrée avec succès !"}), 201
-
-    except Exception as e:
-        return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+    urgence = Urgence(
+        nom=data['nom'],
+        lieu=data['lieu'],
+        latitude=location.latitude,
+        longitude=location.longitude,
+        animal=data['animal'],
+        description=data['description']
+    )
+    db.session.add(urgence)
+    db.session.commit()
+    return jsonify({"message": "Urgence enregistrée"}), 201
 
 @app.route('/urgences', methods=['GET'])
 def voir_urgences():
@@ -120,7 +111,7 @@ def voir_urgences():
         "longitude": u.longitude, "animal": u.animal, "description": u.description, "statut": u.statut
     } for u in urgences])
 
-# Routes pour les cagnottes
+# Gestion des cagnottes
 @app.route('/cagnotte', methods=['POST'])
 def creer_cagnotte():
     data = request.json
@@ -131,12 +122,7 @@ def creer_cagnotte():
     )
     db.session.add(cagnotte)
     db.session.commit()
-    return jsonify({"message": "Cagnotte créée avec succès !", "id": cagnotte.id}), 201
-
-@app.route('/cagnottes', methods=['GET'])
-def obtenir_cagnottes():
-    cagnottes = Cagnotte.query.all()
-    return jsonify([{"id": c.id, "nom": c.nom, "objectif": c.objectif, "collecte": c.collecte} for c in cagnottes])
+    return jsonify({"message": "Cagnotte créée"}), 201
 
 @app.route('/contribution', methods=['POST'])
 def contribuer():
@@ -153,18 +139,17 @@ def contribuer():
     cagnotte.collecte += data['montant']
     db.session.add(contribution)
     db.session.commit()
-    return jsonify({"message": "Contribution enregistrée avec succès !"}), 201
+    return jsonify({"message": "Contribution enregistrée"}), 201
 
-# WebSocket pour le chat
+# Gestion du chat en temps réel
 @socketio.on('message')
 def handle_message(data):
-    emit('message', {"expediteur": data['expediteur'], "message": data['message'], "date": datetime.datetime.utcnow().strftime('%H:%M:%S')}, broadcast=True)
+    emit('message', data, broadcast=True)
 
-# =========================
-# Démarrage de l'application
-# =========================
+# Démarrer le serveur
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+
 
