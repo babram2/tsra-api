@@ -24,7 +24,7 @@ login_manager.login_view = "login"
 socketio = SocketIO(app, cors_allowed_origins="*")
 geolocator = Nominatim(user_agent="tsra-secours")
 
-# Clé API Stripe (remplace avec ta vraie clé)
+# Clé API Stripe (https://api.render.com/deploy/srv-cui1d2hu0jms7398vthg?key=UU9xpkgjJTc)
 stripe.api_key = "sk_test_votre_cle_secrete"
 
 # ----------------- Modèles de la Base de Données -----------------
@@ -142,4 +142,5 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()  # Création des tables si elles n'existent pas
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)
+
 
