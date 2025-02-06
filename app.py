@@ -80,30 +80,6 @@ def home():
 # Routes pour les urgences
 @app.route('/urgence', methods=['POST'])
 def signaler_urgence():
-    data = request.json
-    location = geolocator.geocode(data['lieu'])
-    urgence = Urgence(
-        nom=data['nom'],
-        lieu=data['lieu'],
-        latitude=location.latitude if location else None,
-        longitude=location.longitude if location else None,
-        animal=data['animal'],
-        description=data['description']
-    )
-    db.session.add(urgence)
-    db.session.commit()
-    return jsonify({"message": "Urgence enregistrée avec succès !"}), 201
-
-@app.route('/urgences', methods=['GET'])
-def voir_urgences():
-    urgences = Urgence.query.all()
-    return jsonify([{
-        "id": u.id, "nom": u.nom, "lieu": u.lieu, "latitude": u.latitude,
-        "longitude": u.longitude, "animal": u.animal, "description": u.description, "statut": u.statut
-    } for u in urgences])
-
-@app.route('/urgence', methods=['POST'])
-def signaler_urgence():
     try:
         data = request.json
         if not data:
@@ -135,6 +111,14 @@ def signaler_urgence():
 
     except Exception as e:
         return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+
+@app.route('/urgences', methods=['GET'])
+def voir_urgences():
+    urgences = Urgence.query.all()
+    return jsonify([{
+        "id": u.id, "nom": u.nom, "lieu": u.lieu, "latitude": u.latitude,
+        "longitude": u.longitude, "animal": u.animal, "description": u.description, "statut": u.statut
+    } for u in urgences])
 
 # Routes pour les cagnottes
 @app.route('/cagnotte', methods=['POST'])
