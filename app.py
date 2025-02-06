@@ -30,6 +30,70 @@ stripe.api_key = "sk_test_votre_cle_secrete"
 # Géolocalisation
 geolocator = Nominatim(user_agent="tsra-secours")
 
+# Modèle de la cagnotte
+class Cagnotte(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    objectif = db.Column(db.Float, nullable=False)
+    collecte = db.Column(db.Float, default=0.0)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Modèle des contributions
+class Contribution(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    cagnotte_id = db.Column(db.Integer, db.ForeignKey('cagnotte.id'), nullable=False)
+    nom_donateur = db.Column(db.String(100), nullable=False)
+    montant = db.Column(db.Float, nullable=False)
+    date_don = db.Column(db.DateTime, default=datetime.utcnow)
+
+# Création de la base de données
+with app.app_context():
+    db.create_all()
+
+# Route pour créer une cagnotte
+@app.route('/cagnotte', methods=['POST'])
+def creer_cagnotte():
+    data = request.json
+    nouvelle_cagnotte = Cagnotte(
+        nom=data['nom'],
+        description=data['description'],
+        objectif=data['objectif']
+    )
+    db.session.add(nouvelle_cagnotte)
+    db.session.commit()
+    return jsonify({"message": "Cagnotte créée avec succès !", "id": nouvelle_cagnotte.id}), 201
+
+# Route pour voir toutes les cagnottes
+@app.route('/cagnottes', methods=['GET'])
+def obtenir_cagnottes():
+    cagnottes = Cagnotte.query.all()
+    return jsonify([{"id": c.id, "nom": c.nom, "objectif": c.objectif, "collecte": c.collecte} for c in cagnottes])
+
+# Route pour contribuer à une cagnotte
+@app.route('/contribution', methods=['POST'])
+def contribuer():
+    data = request.json
+    cagnotte = Cagnotte.query.get(data['cagnotte_id'])
+    if not cagnotte:
+        return jsonify({"error": "Cagnotte non trouvée"}), 404
+
+    contribution = Contribution(
+        cagnotte_id=data['cagnotte_id'],
+        nom_donateur=data['nom_donateur'],
+        montant=data['montant']
+    )
+    cagnotte.collecte += data['montant']
+
+    db.session.add(contribution)
+    db.session.commit()
+
+    return jsonify({"message": "Contribution enregistrée avec succès !"}), 201
+
+# Lancer l'application Flask (en mode développement)
+if __name__ == '__main__':
+    app.run(debug=True)
+
 # Modèle Bénévole (Admin)
 class Benevole(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
