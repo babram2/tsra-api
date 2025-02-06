@@ -102,6 +102,40 @@ def voir_urgences():
         "longitude": u.longitude, "animal": u.animal, "description": u.description, "statut": u.statut
     } for u in urgences])
 
+@app.route('/urgence', methods=['POST'])
+def signaler_urgence():
+    try:
+        data = request.json
+        if not data:
+            return jsonify({"error": "Données JSON manquantes"}), 400
+
+        # Vérification des champs nécessaires
+        for champ in ['nom', 'lieu', 'animal', 'description']:
+            if champ not in data:
+                return jsonify({"error": f"Le champ '{champ}' est requis"}), 400
+
+        # Géolocalisation
+        location = geolocator.geocode(data['lieu'])
+        if not location:
+            return jsonify({"error": "Impossible de géolocaliser l'adresse"}), 400
+
+        # Création de l'urgence
+        nouvelle_urgence = Urgence(
+            nom=data['nom'],
+            lieu=data['lieu'],
+            latitude=location.latitude,
+            longitude=location.longitude,
+            animal=data['animal'],
+            description=data['description']
+        )
+        db.session.add(nouvelle_urgence)
+        db.session.commit()
+
+        return jsonify({"message": "Urgence enregistrée avec succès !"}), 201
+
+    except Exception as e:
+        return jsonify({"error": f"Une erreur est survenue : {str(e)}"}), 500
+
 # Routes pour les cagnottes
 @app.route('/cagnotte', methods=['POST'])
 def creer_cagnotte():
@@ -149,6 +183,4 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, debug=True, host="0.0.0.0", port=5000)
-
-
 
