@@ -1,0 +1,12 @@
+flask
+flask-sqlalchemy
+flask-socketio
+flask-bcrypt
+flask-login
+flask-cors
+stripe
+pandas
+openpyxl
+reportlab
+gunicorn
+geopy
