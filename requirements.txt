@@ -1,8 +1,13 @@
 flask
-gunicorn
 flask_sqlalchemy
 flask_socketio
 flask_bcrypt
 flask_login
 flask_cors
 stripe
+panda
+openpyxl
+reportlab
+flask==3.1.0
+gunicorn==23.0.0
+geopy
