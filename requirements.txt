@@ -11,3 +11,12 @@ reportlab
 flask==3.1.0
 gunicorn==23.0.0
 geopy
+Flask==2.3.2
+Flask-SQLAlchemy==3.0.5
+Flask-SocketIO==5.3.3
+Flask-Bcrypt==1.0.1
+Flask-Login==0.6.2
+Flask-Cors==3.0.10
+stripe==5.5.0
+geopy==2.3.0
+eventlet==0.33.3
