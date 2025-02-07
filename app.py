@@ -90,8 +90,7 @@ def creer_cagnotte():
     nouvelle_cagnotte = Cagnotte(
         nom=data['nom'],
         description=data['description'],
-        objectif=data['objectif']
-    )
+        objectif=data['objectif'])
     db.session.add(nouvelle_cagnotte)
     db.session.commit()
     return jsonify({"message": "Cagnotte créée avec succès !"}), 201
