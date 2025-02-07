@@ -22,7 +22,7 @@ login_manager = LoginManager(app)
 login_manager.login_view = "login"
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-# Configuration Stripe (remplacez par votre clé)
+# Configuration Stripe (https://api.render.com/deploy/srv-cui1d2hu0jms7398vthg?key=UU9xpkgjJTc)
 stripe.api_key = "sk_test_votre_cle_secrete"
 
 # Initialisation Geopy pour géolocalisation
