@@ -29,15 +29,6 @@ geolocator = Nominatim(user_agent="tsra-secours")
 location = geolocator.geocode("10 Rue de Nantes")
 print(location.latitude, location.longitude)
 
-# WebSocket pour le chat en direct
-@socketio.on('message')
-def handle_message(data):
-    emit('message', {"expediteur": data['expediteur'], "message": data['message']}, broadcast=True)
-
-# Lancer l'application
-if __name__ == '__main__':
-    socketio.run(app, debug=True)
-
 # Modèles de base de données
 class Cagnotte(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -149,6 +140,15 @@ def voir_urgences():
         "description": u.description,
         "statut": u.statut
     } for u in urgences])
+
+# WebSocket pour le chat en direct
+@socketio.on('message')
+def handle_message(data):
+    emit('message', {"expediteur": data['expediteur'], "message": data['message']}, broadcast=True)
+
+# Lancer l'application
+if __name__ == '__main__':
+    socketio.run(app, debug=True)
 
 
 
