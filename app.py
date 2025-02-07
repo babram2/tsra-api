@@ -8,7 +8,7 @@ import stripe
 import datetime
 from geopy.geocoders import Nominatim
 from geopy.distance import geodesic
-from werkzeug.urls import url_parse
+from werkzeug.urls import url_decode
 
 # Initialisation de Flask et des extensions
 app = Flask(__name__)
