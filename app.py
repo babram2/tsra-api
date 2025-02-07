@@ -7,6 +7,9 @@ from flask_cors import CORS
 import stripe
 import datetime
 from geopy.geocoders import Nominatim
+geolocator = Nominatim(user_agent="tsra-secours")
+location = geolocator.geocode("10 Rue de Nantes")
+print(location.latitude, location.longitude)
 from geopy.distance import geodesic
 
 # Configuration Flask
